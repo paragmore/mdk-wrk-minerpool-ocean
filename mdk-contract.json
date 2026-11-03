@@ -17,7 +17,7 @@
       { "name": "stats_history", "unit": "", "type": "array", "handler": "src/telemetry/stats-history.js", "description": "Saved stats snapshots. Requires start and end (ms). Optional interval is 5m, 30m, 3h, or 1D." },
       { "name": "workers", "unit": "", "type": "object", "handler": "src/telemetry/workers.js", "description": "Latest worker list, or history when start and end are set. Optional offset, limit (max 100), and name." },
       { "name": "workers_count", "unit": "", "type": "array", "handler": "src/telemetry/workers-count.js", "description": "Worker-count samples. Requires start and end (ms)." },
-      { "name": "transactions", "unit": "", "type": "array", "handler": "src/telemetry/transactions.js", "description": "Earnings rows. Requires start and end (ms). aggrHourly=true returns averaged hourly revenue instead of raw rows." },
+      { "name": "transactions", "unit": "", "type": "array", "handler": "src/telemetry/transactions.js", "description": "Earnings rows for a range, fetched from the pool in one call per account (no backfill needed) and grouped per day. Requires start and end (ms). aggrHourly=true returns averaged hourly revenue instead of raw rows." },
       { "name": "blocks", "unit": "", "type": "object", "handler": "src/telemetry/blocks.js", "description": "Pool blocks in a range. Requires start and end (ms). aggrMonthly=true returns monthly pool and site luck." },
       { "name": "alerts", "unit": "", "type": "object", "handler": "src/telemetry/alerts.js", "description": "Currently active alerts. Ocean_pool_not_reachable and Datum_Offline." },
       { "name": "alerts_history", "unit": "", "type": "array", "handler": "src/telemetry/alerts-history.js", "description": "Alert openings. Requires start and end (ms)." },
