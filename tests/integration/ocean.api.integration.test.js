@@ -192,6 +192,8 @@ test('integration: getTransactions should fetch earnings and payouts', async (t)
   t.ok(result.payouts !== undefined)
   t.ok(Array.isArray(result.earnings))
   t.ok(Array.isArray(result.payouts))
+  // the mock seeds a block every two hours, so a week always has earnings
+  t.ok(result.earnings.length > 0, `${result.earnings.length} earnings over 7 days`)
 
   // Check earnings structure if present
   if (result.earnings.length > 0) {

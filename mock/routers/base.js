@@ -11,11 +11,11 @@ function checkError (req, res) {
 }
 
 function generateEarnpayData (blocks, startTime, endTime) {
+  // generateMockBlocks() stamps blocks in ms, so compare in ms: scaling by
+  // 1000 pushed every block decades into the future and earnpay never
+  // returned a row for any real range.
   const earnings = blocks
-    .filter(block => {
-      const blockTime = block.ts * 1000 // Convert Unix timestamp to milliseconds
-      return blockTime >= startTime && blockTime <= endTime
-    })
+    .filter(block => block.ts >= startTime && block.ts <= endTime)
     .map(block => ({
       block_hash: block.block_hash,
       ts: block.ts,
