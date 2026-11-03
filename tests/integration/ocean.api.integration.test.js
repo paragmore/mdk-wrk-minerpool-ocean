@@ -198,6 +198,9 @@ test('integration: getTransactions should fetch earnings and payouts', async (t)
     const firstEarning = result.earnings[0]
     t.ok(firstEarning.block_hash)
     t.ok(typeof firstEarning.ts === 'number')
+    // the pool fee is 2% of the user's share, so it is a small fraction of the payout
+    t.ok(firstEarning.fees_collected_satoshis < firstEarning.satoshis_net_earned * 0.03,
+      `fee ${firstEarning.fees_collected_satoshis} vs net ${firstEarning.satoshis_net_earned}`)
     t.ok(typeof firstEarning.satoshis_net_earned === 'number')
   }
 
