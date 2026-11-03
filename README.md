@@ -9,6 +9,7 @@ Contract-first MDK worker for the [Ocean.xyz](https://ocean.xyz) Bitcoin mining 
   "apiUrl": "https://api.ocean.xyz",
   "accounts": ["<ocean-username>"],
   "apiRetry": 3,
+  "apiRateLimitMs": 1000,
   "datumApiUrl": "http://127.0.0.1:7152"
 }
 ```
@@ -20,6 +21,10 @@ Contract-first MDK worker for the [Ocean.xyz](https://ocean.xyz) Bitcoin mining 
 Live: `hashrate`, `workers_online`, `balance`, `estimated_earnings`, `stats`, `workers`, `alerts`, `yearly_balances`.
 
 History, all requiring `start` and `end`: `stats_history`, `workers_count`, `transactions`, `blocks`, `alerts_history`.
+`transactions` fetches the whole range from the pool in one call per account; the other history channels are served
+from what the Worker has recorded since it started.
+
+`apiRateLimitMs` spaces Ocean API calls (default `1000`, Ocean's rate limit); set it to `0` against the mock.
 
 DATUM: `datum_stats`, `datum_client_stats`, `stratum_info`, `stratum_job`, `thread_stats`, `stratum_list`, `coinbaser`, `datum_config`.
 

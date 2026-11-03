@@ -37,6 +37,8 @@ test('WorkerRuntimeV2 serves ocean telemetry without credentials', async (t) => 
 
   const runtime = new WorkerRuntimeV2(WORKER_DIR, {
     workerId: 'ocean-test',
+    // the runtime is fail-closed on newer MDK releases; nothing dials this test runtime
+    allowAll: true,
     env: { DATUM_USER: 'datum-user', DATUM_PASSWORD: 'datum-secret' },
     devices: [{
       deviceId: 'pool-0',
@@ -44,7 +46,8 @@ test('WorkerRuntimeV2 serves ocean telemetry without credentials', async (t) => 
         apiUrl: `http://127.0.0.1:${port}`,
         datumApiUrl: `http://127.0.0.1:${port}`,
         accounts: ['test'],
-        apiRetry: 1
+        apiRetry: 1,
+        apiRateLimitMs: 0
       }
     }]
   })
@@ -89,4 +92,29 @@ test('WorkerRuntimeV2 serves ocean telemetry without credentials', async (t) => 
     query: { type: 'stats_history' }
   }))
   t.ok(/ERR_START_INVALID/.test(missing.payload.error))
+
+  // transactions come from the pool for the whole range, not from the
+  // in-memory history (which holds only what was recorded since start)
+  const end = Date.now()
+  const start = end - 7 * 24 * 60 * 60 * 1000
+  const transactions = await runtime.handleRequest(request(ACTIONS.TELEMETRY_PULL, 'pool-0', {
+    query: { type: 'transactions', start, end }
+  }))
+  const rows = transactions.payload.value
+  // the mock seeds ten blocks two hours apart, so the range always holds rows
+  t.ok(Array.isArray(rows) && rows.length >= 1, `${rows.length} daily rows over 7 days`)
+  t.is(rows.reduce((n, row) => n + row.transactions.length, 0), 10, 'every seeded block earns once')
+  t.ok(rows.every((row) => row.ts >= start - 24 * 60 * 60 * 1000 && row.ts <= end && Array.isArray(row.transactions)))
+  t.ok(rows.every((row, i) => i === 0 || row.ts > rows[i - 1].ts), 'one row per day, ascending')
+  t.ok(rows.every((row) => row.transactions.every((tx) => tx.username === 'test' && typeof tx.satoshis_net_earned === 'number')))
+
+  const hourly = await runtime.handleRequest(request(ACTIONS.TELEMETRY_PULL, 'pool-0', {
+    query: { type: 'transactions', start, end, aggrHourly: true }
+  }))
+  t.ok(hourly.payload.value.hourlyRevenues.length >= 7 * 24)
+
+  const noRange = await runtime.handleRequest(request(ACTIONS.TELEMETRY_PULL, 'pool-0', {
+    query: { type: 'transactions' }
+  }))
+  t.ok(/ERR_START_INVALID/.test(noRange.payload.error))
 })

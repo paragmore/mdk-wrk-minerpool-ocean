@@ -2,14 +2,27 @@
 
 const { setTimeout: sleep } = require('timers/promises')
 
+const DEFAULT_RATE_LIMIT_MS = 1000
+
 class OceanMinerPoolApi {
-  constructor (http) {
+  constructor (http, { rateLimitMs = DEFAULT_RATE_LIMIT_MS } = {}) {
     this._http = http
+    this._rateLimitMs = Number(rateLimitMs) >= 0 ? Number(rateLimitMs) : DEFAULT_RATE_LIMIT_MS
+    this._lastCallAt = 0
+  }
+
+  // Ocean rate-limits its API: keep calls at least rateLimitMs apart, but
+  // only wait for the remainder of that window, so a call that comes after a
+  // quiet second (or the first call of a pull) goes out at once. 0 disables
+  // the spacing, for a mock.
+  async _throttle () {
+    const wait = this._rateLimitMs - (Date.now() - this._lastCallAt)
+    if (wait > 0) await sleep(wait)
+    this._lastCallAt = Date.now()
   }
 
   async _request (apiPath) {
-    // waiting between calls due to api rate limits
-    await sleep(1000)
+    await this._throttle()
     let resp
     try {
       const res = await this._http.get(apiPath, { encoding: 'json' })

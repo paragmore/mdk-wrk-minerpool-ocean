@@ -22,7 +22,7 @@ const {
 } = require('./lib/utils')
 
 const REQUEST_TIMEOUT_MS = 30 * 1000
-const RATE_LIMIT_MS = 1000
+const DEFAULT_RATE_LIMIT_MS = 1000
 
 function httpClient (baseUrl) {
   return {
@@ -49,7 +49,8 @@ class PoolClient {
     this.apiUrl = opts.apiUrl
     this.accounts = accounts
     this.apiRetry = Number(opts.apiRetry) > 0 ? Number(opts.apiRetry) : 3
-    this.oceanApi = new OceanMinerPoolApi(httpClient(this.apiUrl))
+    this.rateLimitMs = Number(opts.apiRateLimitMs) >= 0 ? Number(opts.apiRateLimitMs) : DEFAULT_RATE_LIMIT_MS
+    this.oceanApi = new OceanMinerPoolApi(httpClient(this.apiUrl), { rateLimitMs: this.rateLimitMs })
     this.datumApi = opts.datumApiUrl
       ? new DatumApi(httpClient(opts.datumApiUrl), {
         user: env.DATUM_USER,
@@ -105,8 +106,33 @@ class PoolClient {
 
   enqueue (fn) {
     const run = this._chain.then(fn, fn)
-    this._chain = run.then(() => sleep(RATE_LIMIT_MS), () => sleep(RATE_LIMIT_MS))
+    this._chain = run.then(() => sleep(this.rateLimitMs), () => sleep(this.rateLimitMs))
     return run
+  }
+
+  // Earnings rows for a range, fetched from the pool in one call per account
+  // rather than served from the in-memory history, which only holds what has
+  // been recorded since the process started. Rows are grouped per local day,
+  // the shape _refreshHistory() records, so aggregateTransactions() and
+  // callers see the same rows either way.
+  transactions (params) {
+    requireRange(params)
+    const start = Number(params.start)
+    const end = Number(params.end)
+    return this.enqueue(async () => {
+      const byDay = new Map()
+      for (const username of this.accounts) {
+        const { earnings = [] } = await this.oceanApi.getTransactions(username, convertMsToSeconds(start), convertMsToSeconds(end))
+        for (const row of earnings) {
+          // earnpay rows carry a unix timestamp; the mock stamps them in ms
+          const tsMs = row.ts > 1e12 ? row.ts : row.ts * 1000
+          const day = new Date(tsMs).setHours(0, 0, 0, 0)
+          if (!byDay.has(day)) byDay.set(day, { ts: day, transactions: [] })
+          byDay.get(day).transactions.push({ username, ...row })
+        }
+      }
+      return [...byDay.values()].sort((a, b) => a.ts - b.ts)
+    })
   }
 
   async refresh () {

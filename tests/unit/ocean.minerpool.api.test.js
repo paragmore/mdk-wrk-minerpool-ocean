@@ -145,3 +145,22 @@ test('OceanMinerPoolApi: getStatsSnap should call correct endpoint', async (t) =
   t.is(calledPath, `/v1/statsnap/${username}`)
   t.is(result.unpaid, '0.1')
 })
+
+test('OceanMinerPoolApi: spaces calls by rateLimitMs instead of sleeping before every call', async (t) => {
+  const mockHttp = { get: async () => ({ body: { result: {} } }) }
+
+  const unlimited = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 0 })
+  let started = Date.now()
+  await unlimited.getBlocks()
+  await unlimited.getBlocks()
+  t.ok(Date.now() - started < 200, 'rateLimitMs 0 adds no delay')
+
+  const spaced = new OceanMinerPoolApi(mockHttp, { rateLimitMs: 150 })
+  started = Date.now()
+  await spaced.getBlocks()
+  const first = Date.now() - started
+  await spaced.getBlocks()
+  const both = Date.now() - started
+  t.ok(first < 100, `first call goes out at once (${first}ms)`)
+  t.ok(both >= 150, `second call waits for the window (${both}ms)`)
+})
