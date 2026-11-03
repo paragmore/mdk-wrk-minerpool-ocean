@@ -11,16 +11,18 @@ function checkError (req, res) {
 }
 
 function generateEarnpayData (blocks, startTime, endTime) {
+  // generateMockBlocks() stamps blocks in ms, so compare in ms: scaling by
+  // 1000 pushed every block decades into the future and earnpay never
+  // returned a row for any real range.
   const earnings = blocks
-    .filter(block => {
-      const blockTime = block.ts * 1000 // Convert Unix timestamp to milliseconds
-      return blockTime >= startTime && blockTime <= endTime
-    })
+    .filter(block => block.ts >= startTime && block.ts <= endTime)
     .map(block => ({
       block_hash: block.block_hash,
       ts: block.ts,
       shares_in_window: Math.floor(block.accepted_shares * 0.001), // User's share
-      fees_collected_satoshis: Math.floor(block.total_reward_sats * 0.02), // 2% fee
+      // The 2% pool fee is charged on the user's 0.1% share of the block, not
+      // on the whole block: the fee row must stay far below the payout row.
+      fees_collected_satoshis: Math.floor(block.total_reward_sats * 0.001 * 0.02),
       satoshis_net_earned: Math.floor(block.total_reward_sats * 0.98 * 0.001) // 98% after fee, user's portion
     }))
 

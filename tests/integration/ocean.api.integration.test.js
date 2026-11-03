@@ -192,12 +192,17 @@ test('integration: getTransactions should fetch earnings and payouts', async (t)
   t.ok(result.payouts !== undefined)
   t.ok(Array.isArray(result.earnings))
   t.ok(Array.isArray(result.payouts))
+  // the mock seeds a block every two hours, so a week always has earnings
+  t.ok(result.earnings.length > 0, `${result.earnings.length} earnings over 7 days`)
 
   // Check earnings structure if present
   if (result.earnings.length > 0) {
     const firstEarning = result.earnings[0]
     t.ok(firstEarning.block_hash)
     t.ok(typeof firstEarning.ts === 'number')
+    // the pool fee is 2% of the user's share, so it is a small fraction of the payout
+    t.ok(firstEarning.fees_collected_satoshis < firstEarning.satoshis_net_earned * 0.03,
+      `fee ${firstEarning.fees_collected_satoshis} vs net ${firstEarning.satoshis_net_earned}`)
     t.ok(typeof firstEarning.satoshis_net_earned === 'number')
   }
 
